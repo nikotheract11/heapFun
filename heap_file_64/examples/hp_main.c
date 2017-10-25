@@ -102,13 +102,13 @@ int main() {
   }
 
   printf("RUN TestFileScan\n");
-  RUN_AND_TIME(TestFileScan(fd, 1700));
+//  RUN_AND_TIME(TestFileScan(fd, 1700));
 
   printf("RUN PrintAllEntries\n");
   CALL_OR_DIE(HP_PrintAllEntries(fd));
 
   printf("Get Entry with rowid 1000\n");
-    (HP_GetEntry(fd, 1000, &record));
+    (HP_GetEntry(fd,51, &record));
     printf("%d,\"%s\",\"%s\",\"%s\"\n",
     record.id, record.name, record.surname, record.city);
 
