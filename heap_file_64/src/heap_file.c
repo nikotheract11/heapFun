@@ -45,56 +45,36 @@ HP_ErrorCode HP_InsertEntry(int fileDesc, Record record) {
 	//BF_Init(LRU);
 	int block_num=0;
 	BF_GetBlockCounter(fileDesc,&block_num);
+	if(block_num == 0 ) {
+		BF_AllocateBlock(fileDesc,block);
+		BF_UnpinBlock(block);
+	}
 
 	/* ============================ */
-	//BF_AllocateBlock(fileDesc,block);
-	char *data ;//= BF_Block_GetData(block);
-	int entries;// = 0;
-	//memcpy(&entries,data,sizeof(int));
-	//printf("%d\n",entries );
+	char *data ;
+	int entries;
 	int cur_block = 1;	// block 0 contains only metadata
 	while(1){
-		if(BF_GetBlock(fileDesc,cur_block,block) != BF_OK) BF_AllocateBlock(fileDesc,block);
+		if(BF_GetBlock(fileDesc,cur_block,block) != BF_OK) 	BF_AllocateBlock(fileDesc,block);
 		data = BF_Block_GetData(block);
 		memcpy(&entries,data,sizeof(int));
 		if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
 		if(entries >= 17) {
 			cur_block++;
-		//	BF_Block_SetDirty(block);
+
 			BF_UnpinBlock(block);
 			continue;
 		}
-
-		if (cur_block == 1 && entries != 0 && record.id == 3 ){
-	//		printf("+=========================================%d\n",entries);
-		}
 		int index = (entries ) * sizeof(Record) + (int)sizeof(int);
-		//if(record.id == 0 ) 	printf("%d,\"%s\",\"%s\",\"%s\"\n",record.id, record.name, record.surname, record.city);
 		memcpy(&(data[index]),&record,sizeof(Record));
 		if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
-		//////////////////////////////////////
-		/*if(record.id == 0) {
-			Record record2;
-			memcpy(&record2,&(data[sizeof(int)]),sizeof(Record));
-			printf("%d,\"%s\",\"%s\",\"%s\"\n",record2.id, record2.name, record2.surname, record2.city);
-
-
-		}*/
-		entries++;
-		memcpy(&data[0],&entries,sizeof(int));
-		if (cur_block == 1 && data[0] != 0 && record.id == 0 ){
-			printf("+=========================================%d\n",data[0]);
-		}
-
-		//if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
-	//	memcpy(&record,&(data[index]),sizeof(Record));
-		//printf("%d,\"%s\",\"%s\",\"%s\"\n",record.id, record.name, record.surname, record.city);
-
+		entries++;//= entries+1;
+		memcpy(data,&entries,sizeof(int));
 		BF_Block_SetDirty(block);
 		BF_UnpinBlock(block);
 		return HP_OK;
 	}
-	//BF_UnpinBlock(block);
+	BF_UnpinBlock(block);
 	return HP_ERROR;
 }
 
@@ -138,7 +118,7 @@ HP_ErrorCode HP_GetEntry(int fileDesc, int rowId, Record *record) {
 	int block_num;
 	BF_GetBlockCounter(fileDesc,&block_num);
 	int off = rowId / 17 + 1;
-	int num = (rowId % 17) - 2;
+	int num = (rowId % 17) - 1;
 	if(num < 0) {
 		if(off > 1) {
 			off--;
