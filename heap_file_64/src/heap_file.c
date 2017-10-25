@@ -43,82 +43,69 @@ HP_ErrorCode HP_InsertEntry(int fileDesc, Record record) {
 	BF_Block *block;
 	BF_Block_Init(&block);
 	BF_Init(LRU);
-	int block_num;
+	int block_num=0;
 	BF_GetBlockCounter(fileDesc,&block_num);
 
 	/* ============================ */
-
-	if(block_num == 0) {
-		BF_AllocateBlock(fileDesc,block);
-		char *data = BF_Block_GetData(block);
-		int entries = 0;
-		memcpy(data,&entries,sizeof(int));
-	//	if(data[0] == 0) printf("OKKK\n");
-	}
-	else{
-		if(BF_GetBlock(fileDesc,block_num-1,block) != BF_OK) return HP_ERROR;
-	}
-	char *data;
-	data = BF_Block_GetData(block);
-	int entries,i ;
-	memcpy(&entries,data,sizeof(int));
-	if(entries < 17) {
-
-		//if(entries == 1)
-		i = (entries * sizeof(Record)) + (int) sizeof(int);
-		//else i = (int) sizeof(int);
-		memcpy(&(data[i]),&record,sizeof(Record));
+	//BF_AllocateBlock(fileDesc,block);
+	char *data ;//= BF_Block_GetData(block);
+	int entries = 0;
+	//memcpy(&entries,data,sizeof(int));
+	//printf("%d\n",entries );
+	int cur_block = 1;	// block 0 contains only metadata
+	while(1){
+		if(BF_GetBlock(fileDesc,cur_block,block) != BF_OK) BF_AllocateBlock(fileDesc,block);
+		data = BF_Block_GetData(block);
+		memcpy(&entries,data,sizeof(int));
+		if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
+		if(entries >= 17) {
+			cur_block++;
+			BF_UnpinBlock(block);
+			continue;
+		}
+		int index = entries * sizeof(Record) + sizeof(int);
+		memcpy(&(data[index]),&record,sizeof(Record));
+		if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
 		entries++;
-		data = BF_Block_GetData(block);
 		memcpy(data,&entries,sizeof(int));
-	}
-	else {
+		if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
+		memcpy(&record,&(data[index]),sizeof(Record));
+		//printf("%d,\"%s\",\"%s\",\"%s\"\n",record.id, record.name, record.surname, record.city);
+		BF_Block_SetDirty(block);
 		BF_UnpinBlock(block);
-		BF_AllocateBlock(fileDesc,block);
-		data = BF_Block_GetData(block);
-
-		 i = (int) sizeof(int);
-		//else i = (int) sizeof(int);
-
-		memcpy(&(data[i]),&record,sizeof(Record));
-		data = BF_Block_GetData(block);
-		entries = 0;
-		memcpy(data,&entries,sizeof(int));
-		//printf("%d\n",entries );
+		return HP_OK;
 	}
-
-	BF_Block_SetDirty(block);
 	BF_UnpinBlock(block);
-
-	return HP_OK;
+	return HP_ERROR;
 }
 
 HP_ErrorCode HP_PrintAllEntries(int fileDesc) {
 	BF_Block *block;
 	BF_Block_Init(&block);
+	Record record;
 	int block_num;
 	char *data;
 	BF_GetBlockCounter(fileDesc,&block_num);
-	for(int i = 0;i<block_num;i++){
+	for(int i = 1;i<block_num;i++){
 		BF_GetBlock(fileDesc,i,block);
 		data = BF_Block_GetData(block);
 		int entries;
 		memcpy(&entries,data,sizeof(int));
-	//	data;// += sizeof(int);
-		int a = 0;
-		data = BF_Block_GetData(block);
-		data += sizeof(int);
-		while(a<entries){
-			a++;
-			Record record;
+		if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
+		int i = 0;
+		while(i < entries){
 
-			memcpy(&record,data,sizeof(Record));
-			printf("%d,\"%s\",\"%s\",\"%s\"\n",record.id, record.name, record.surname, record.city );
-			data+=sizeof(Record);
+			int index = i * sizeof(Record) + sizeof(int);
+			memcpy(&record,&(data[index]),sizeof(Record));
+			if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
+			printf("%d,\"%s\",\"%s\",\"%s\"\n",record.id, record.name, record.surname, record.city);
+			//entries--;
+			i++;
 		}
 		BF_UnpinBlock(block);
 	}
 	BF_UnpinBlock(block);
+
 	return HP_OK;
 }
 
