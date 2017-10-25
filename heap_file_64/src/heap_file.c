@@ -42,14 +42,14 @@ HP_ErrorCode HP_InsertEntry(int fileDesc, Record record) {
 	/* * Initializations * */
 	BF_Block *block;
 	BF_Block_Init(&block);
-	BF_Init(LRU);
+	//BF_Init(LRU);
 	int block_num=0;
 	BF_GetBlockCounter(fileDesc,&block_num);
 
 	/* ============================ */
 	//BF_AllocateBlock(fileDesc,block);
 	char *data ;//= BF_Block_GetData(block);
-	int entries = 0;
+	int entries;// = 0;
 	//memcpy(&entries,data,sizeof(int));
 	//printf("%d\n",entries );
 	int cur_block = 1;	// block 0 contains only metadata
@@ -60,22 +60,41 @@ HP_ErrorCode HP_InsertEntry(int fileDesc, Record record) {
 		if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
 		if(entries >= 17) {
 			cur_block++;
+		//	BF_Block_SetDirty(block);
 			BF_UnpinBlock(block);
 			continue;
 		}
-		int index = entries * sizeof(Record) + sizeof(int);
+
+		if (cur_block == 1 && entries != 0 && record.id == 3 ){
+	//		printf("+=========================================%d\n",entries);
+		}
+		int index = (entries ) * sizeof(Record) + (int)sizeof(int);
+		//if(record.id == 0 ) 	printf("%d,\"%s\",\"%s\",\"%s\"\n",record.id, record.name, record.surname, record.city);
 		memcpy(&(data[index]),&record,sizeof(Record));
 		if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
+		//////////////////////////////////////
+		/*if(record.id == 0) {
+			Record record2;
+			memcpy(&record2,&(data[sizeof(int)]),sizeof(Record));
+			printf("%d,\"%s\",\"%s\",\"%s\"\n",record2.id, record2.name, record2.surname, record2.city);
+
+
+		}*/
 		entries++;
-		memcpy(data,&entries,sizeof(int));
-		if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
-		memcpy(&record,&(data[index]),sizeof(Record));
+		memcpy(&data[0],&entries,sizeof(int));
+		if (cur_block == 1 && data[0] != 0 && record.id == 0 ){
+			printf("+=========================================%d\n",data[0]);
+		}
+
+		//if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
+	//	memcpy(&record,&(data[index]),sizeof(Record));
 		//printf("%d,\"%s\",\"%s\",\"%s\"\n",record.id, record.name, record.surname, record.city);
+
 		BF_Block_SetDirty(block);
 		BF_UnpinBlock(block);
 		return HP_OK;
 	}
-	BF_UnpinBlock(block);
+	//BF_UnpinBlock(block);
 	return HP_ERROR;
 }
 
@@ -92,19 +111,23 @@ HP_ErrorCode HP_PrintAllEntries(int fileDesc) {
 		int entries;
 		memcpy(&entries,data,sizeof(int));
 		if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
-		int i = 0;
-		while(i < entries){
-
-			int index = i * sizeof(Record) + sizeof(int);
+		int j = 0;
+		while(j < entries){
+			int index = j * sizeof(Record) + sizeof(int);
 			memcpy(&record,&(data[index]),sizeof(Record));
 			if(data != BF_Block_GetData(block)) data = BF_Block_GetData(block);
 			printf("%d,\"%s\",\"%s\",\"%s\"\n",record.id, record.name, record.surname, record.city);
 			//entries--;
-			i++;
+			j++;
 		}
 		BF_UnpinBlock(block);
 	}
-	BF_UnpinBlock(block);
+	//BF_UnpinBlock(block);
+	//BF_GetBlock(fileDesc,1,block);
+//	data = BF_Block_GetData(block);
+//	memcpy(&record,&(data[sizeof(int)]),sizeof(Record));
+	//printf("============: %d,\"%s\",\"%s\",\"%s\"\n",record.id, record.name, record.surname, record.city);
+
 
 	return HP_OK;
 }
@@ -114,18 +137,24 @@ HP_ErrorCode HP_GetEntry(int fileDesc, int rowId, Record *record) {
 	BF_Block_Init(&block);
 	int block_num;
 	BF_GetBlockCounter(fileDesc,&block_num);
-	int off = rowId / 17 ;
-	int num = rowId % 17 - 1;
+	int off = rowId / 17 + 1;
+	int num = (rowId % 17) - 2;
 	if(num < 0) {
-		off--;
-		num = 16 ;
+		if(off > 1) {
+			off--;
+			num += 17  ;
+		}
+		else {
+			num = 0;
+		}
 	}
-	if(off >= block_num || num > 16) return HP_ERROR;
+//	if(off >= block_num || num > 16) return HP_ERROR;
 	BF_GetBlock(fileDesc,off,block);
 	char *data = BF_Block_GetData(block);// + sizeof(int);
 	//data += sizeof(int) + (num)*sizeof(Record);
 	//printf("%d\n",block_num );
-	memcpy(record,&(data[(num)*sizeof(Record) + sizeof(int)]),sizeof(Record));
+	int index = (num)*(int)sizeof(Record) + sizeof(int);
+	memcpy(record,&(data[index]),sizeof(Record));
 	BF_UnpinBlock(block);
 
 	return HP_OK;
